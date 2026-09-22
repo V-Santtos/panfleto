@@ -1,5 +1,5 @@
-import type { ProductImageGeometry } from "../images/cutout"
-import { scaleProductSilhouette } from "./productPlacement"
+import type { ProductImageGeometry } from "../images/cutout.js"
+import { scaleProductSilhouette } from "./productPlacement.js"
 
 export const STORY_NAME_LINE_LIMIT = 9
 export const STORY_NAME_MAX_LINES = 3

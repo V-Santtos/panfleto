@@ -1,16 +1,21 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises"
 import type { IncomingMessage, ServerResponse } from "node:http"
+import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 
 import type { Plugin } from "vite"
-import type { CatalogRepository, IntegrationUsageReservation } from "./catalogRepository"
+import type { CatalogRepository, IntegrationUsageReservation } from "./catalogRepository.js"
 
 const PREFIX = "/api/cosmos"
 const STATUS_PATH = `${PREFIX}/status`
 const API_ORIGIN = "https://cosmos.bluesoft.com.br/api"
 const DAILY_LIMIT = 25
 const REQUEST_TIMEOUT_MS = 15_000
-const USAGE_FILE = join(process.cwd(), "data", "cosmos-usage.json")
+// Na Vercel só /tmp aceita escrita. Este arquivo é apenas o plano B quando o
+// Supabase não responde; o contador de verdade fica em integration usage.
+const USAGE_FILE = process.env.VERCEL
+  ? join(tmpdir(), "cosmos-usage.json")
+  : join(process.cwd(), "data", "cosmos-usage.json")
 
 export type CosmosUsage = { date: string; used: number }
 export type CosmosUsageDecision = { allowed: boolean; usage: CosmosUsage; remaining: number }
@@ -143,18 +148,15 @@ function quotaBody(decision: IntegrationUsageReservation) {
   }
 }
 
-export function cosmosProxy(
+export function createCosmosProxyHandler(
   tokenValue: string | undefined,
   userAgentValue: string | undefined,
   repositoryProvider: () => CatalogRepository,
-): Plugin {
+) {
   const token = tokenValue?.trim()
   const userAgent = userAgentValue?.trim() || "Cosmos-API-Request"
   let useLocalUsageRecovery = false
-  return {
-    name: "local-cosmos-proxy",
-    configureServer(server) {
-      server.middlewares.use(async (request: IncomingMessage, response: ServerResponse, next: () => void) => {
+  return async (request: IncomingMessage, response: ServerResponse, next: () => void = () => undefined): Promise<void> => {
         const url = new URL(request.url ?? "/", "http://127.0.0.1")
         const gtinMatch = url.pathname.match(/^\/api\/cosmos\/gtins\/([^/]+)$/)
         if (url.pathname !== STATUS_PATH && !gtinMatch) { next(); return }
@@ -206,7 +208,19 @@ export function cosmosProxy(
             : "Não foi possível consultar o Cosmos."
           sendJson(response, 502, { message, usage: { date: decision.usageDate, used: decision.usedCount }, remaining: decision.remaining })
         }
-      })
+  }
+}
+
+export function cosmosProxy(
+  tokenValue: string | undefined,
+  userAgentValue: string | undefined,
+  repositoryProvider: () => CatalogRepository,
+): Plugin {
+  const handler = createCosmosProxyHandler(tokenValue, userAgentValue, repositoryProvider)
+  return {
+    name: "local-cosmos-proxy",
+    configureServer(server) {
+      server.middlewares.use(handler)
     },
   }
 }

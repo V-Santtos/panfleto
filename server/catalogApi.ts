@@ -10,14 +10,14 @@ import {
   validateValidatedProduct,
   type DraftProductInput,
   type ValidatedProductInput,
-} from "../src/domain/catalog"
+} from "../src/domain/catalog.js"
 import {
   CatalogRepositoryError,
   createCatalogRepository,
   type CatalogRepository,
-} from "./catalogRepository"
-import { inspectImageBytes } from "./imageMetadata"
-import { SupabaseConfigurationError, type SupabaseServerConfig } from "./supabaseClient"
+} from "./catalogRepository.js"
+import { inspectImageBytes } from "./imageMetadata.js"
+import { SupabaseConfigurationError, type SupabaseServerConfig } from "./supabaseClient.js"
 
 const PREFIX = "/api/catalogo"
 const MAX_JSON_BODY_BYTES = 64 * 1024
@@ -74,17 +74,23 @@ async function readImageBody(request: IncomingMessage): Promise<Uint8Array> {
   return Buffer.concat(chunks)
 }
 
-function assertLocalMutation(request: IncomingMessage): void {
-  const host = request.headers.host?.toLowerCase() ?? ""
-  if (!/^(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(host)) {
-    throw new RequestValidationError("A gravação do catálogo só pode partir da interface local.")
-  }
-  const origin = request.headers.origin
-  if (!origin) return
+// Fora da máquina local o navegador sempre envia Origin em POST/PATCH; exigi-lo
+// impede que outro site dispare gravações usando o domínio publicado.
+export function isAllowedMutationOrigin(hostHeader: string | undefined, origin: string | undefined): boolean {
+  const host = hostHeader?.toLowerCase() ?? ""
+  if (!host) return false
+  const isLocal = /^(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(host)
+  if (!origin) return isLocal
   try {
     const parsed = new URL(origin)
-    if (parsed.protocol !== "http:" || parsed.host.toLowerCase() !== host) throw new Error("origin")
+    return parsed.protocol === (isLocal ? "http:" : "https:") && parsed.host.toLowerCase() === host
   } catch {
+    return false
+  }
+}
+
+function assertSameOriginMutation(request: IncomingMessage): void {
+  if (!isAllowedMutationOrigin(request.headers.host, request.headers.origin)) {
     throw new RequestValidationError("A origem da gravação do catálogo é inválida.")
   }
 }
@@ -201,7 +207,7 @@ export function createCatalogApiHandler(repositoryProvider: RepositoryProvider) 
 
       if (url.pathname === `${PREFIX}/products/validate`) {
         if (request.method !== "POST") { sendJson(response, 405, { code: "METHOD_NOT_ALLOWED", message: "Método não permitido." }); return }
-        assertLocalMutation(request)
+        assertSameOriginMutation(request)
         const input = validatedProductInput(request)
         const bytes = await readImageBody(request)
         let inspected: ReturnType<typeof inspectImageBytes>
@@ -221,7 +227,7 @@ export function createCatalogApiHandler(repositoryProvider: RepositoryProvider) 
       const displayNameMatch = url.pathname.match(/^\/api\/catalogo\/products\/([^/]+)\/display-name$/)
       if (displayNameMatch) {
         if (request.method !== "PATCH") { sendJson(response, 405, { code: "METHOD_NOT_ALLOWED", message: "Método não permitido." }); return }
-        assertLocalMutation(request)
+        assertSameOriginMutation(request)
         const productId = decodeURIComponent(displayNameMatch[1])
         if (!isUuid(productId)) throw new RequestValidationError("O identificador do produto cadastrado é inválido.")
         const product = await repository.updateProductDisplayName(productId, productDisplayNameInput(await readJsonBody(request)))

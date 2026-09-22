@@ -4,6 +4,7 @@ import { catalogApi } from "./server/catalogApi"
 import { createCatalogRepository, type CatalogRepository } from "./server/catalogRepository"
 import { cosmosProxy } from "./server/cosmosProxy"
 import { kieBackgroundRemoval } from "./server/kieBackgroundRemoval"
+import { productByBarcode } from "./server/productByBarcode"
 import { productImageProxy } from "./server/productImageProxy"
 
 export default defineConfig(({ mode }) => {
@@ -21,21 +22,12 @@ export default defineConfig(({ mode }) => {
       productImageProxy(),
       kieBackgroundRemoval(environment.KIE_API_KEY),
       cosmosProxy(environment.COSMOS_TOKEN, environment.COSMOS_USER_AGENT, repositoryProvider),
+      productByBarcode(),
     ],
     server: {
       host: "127.0.0.1",
       port: 4173,
       strictPort: true,
-      proxy: {
-        "/api/product-by-barcode": {
-          target: "https://world.openfoodfacts.org",
-          changeOrigin: true,
-          headers: {
-            "User-Agent": "OfertaLab/0.1 (local product lookup test)",
-          },
-          rewrite: (path) => path.replace(/^\/api\/product-by-barcode\//, "/api/v2/product/"),
-        },
-      },
     },
     test: {
       environment: "jsdom",

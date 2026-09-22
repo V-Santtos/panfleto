@@ -3,7 +3,7 @@ import {
   STORY_NAME_LINE_LIMIT,
   STORY_NAME_MAX_LINES,
   STORY_NAME_MAX_WORD_CHARACTERS,
-} from "./storyLayout"
+} from "./storyLayout.js"
 
 export const PRESENTATION_UNITS = ["g", "kg", "ml", "L", "unidade"] as const
 export type PresentationUnit = (typeof PRESENTATION_UNITS)[number]

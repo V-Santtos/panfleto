@@ -1,8 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { createHash } from "node:crypto"
 
-import type { CatalogProduct, CatalogProductImage, DraftProductInput, ValidatedProductInput } from "../src/domain/catalog"
-import { createServerSupabase, type SupabaseServerConfig } from "./supabaseClient"
+import type { CatalogProduct, CatalogProductImage, DraftProductInput, ValidatedProductInput } from "../src/domain/catalog.js"
+import { createServerSupabase, type SupabaseServerConfig } from "./supabaseClient.js"
 
 export type ValidatedImageBytes = {
   bytes: Uint8Array

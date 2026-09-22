@@ -1,4 +1,4 @@
-import type { ProductImageGeometry, VisibleAlphaBounds } from "../images/cutout"
+import type { ProductImageGeometry, VisibleAlphaBounds } from "../images/cutout.js"
 
 export type ProductPlacement = {
   offsetX: number

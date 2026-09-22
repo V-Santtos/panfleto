@@ -1,3 +1,5 @@
+import type { IncomingMessage, ServerResponse } from "node:http"
+
 import type { Plugin } from "vite"
 
 const PREFIX = "/api/product-image"
@@ -22,11 +24,8 @@ export function remoteProductImage(path: string): string | undefined {
   return cosmos ? `https://cdn-cosmos.bluesoft.com.br/products/${cosmos[1]}` : undefined
 }
 
-export function productImageProxy(): Plugin {
-  return {
-    name: "local-product-image-proxy",
-    configureServer(server) {
-      server.middlewares.use(async (req, res, next) => {
+export function createProductImageHandler() {
+  return async (req: IncomingMessage, res: ServerResponse, next: () => void = () => undefined): Promise<void> => {
         if (!req.url?.startsWith(PREFIX)) { next(); return }
         const remote = remoteProductImage(req.url)
         if (req.method !== "GET" || !remote) { res.statusCode = 400; res.end("Imagem não permitida."); return }
@@ -66,7 +65,15 @@ export function productImageProxy(): Plugin {
           clearTimeout(timeout)
           controller.abort()
         }
-      })
+  }
+}
+
+export function productImageProxy(): Plugin {
+  const handler = createProductImageHandler()
+  return {
+    name: "local-product-image-proxy",
+    configureServer(server) {
+      server.middlewares.use(handler)
     },
   }
 }

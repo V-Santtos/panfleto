@@ -1,4 +1,4 @@
-import { PRESENTATION_UNITS, type PresentationUnit } from "./offer"
+import { PRESENTATION_UNITS, type PresentationUnit } from "./offer.js"
 
 export const CATALOG_NAME_RESULT_LIMIT = 12
 export const PRODUCT_DISPLAY_NAME_MAX_LENGTH = 200
