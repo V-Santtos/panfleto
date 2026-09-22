@@ -1,0 +1,5 @@
+[mcp_servers.supabase_catalogo]
+url = "https://mcp.supabase.com/mcp?project_ref=ytwbhphmsdntrxfyzhtt&read_only=false&features=database%2Cdocs"
+scopes = ["projects:read", "database:read", "database:write"]
+default_tools_approval_mode = "writes"
+enabled = true
