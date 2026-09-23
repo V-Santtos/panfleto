@@ -1,7 +1,7 @@
 import { createServer, type Server } from "node:http"
 import type { AddressInfo } from "node:net"
 
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { createApiRouter, requestPathFromRewrite } from "./apiRouter"
 import { isAllowedMutationOrigin } from "./catalogApi"
@@ -46,6 +46,25 @@ describe("roteador da API em produção", () => {
     const response = await fetch(`${origin}/api?__path=kie/status`)
     expect(response.status).toBe(200)
   })
+
+  it("entrega a foto quando a reescrita preserva o caminho e acrescenta o parâmetro", async () => {
+    const image = new Uint8Array([255, 216, 255, 217])
+    const nativeFetch = globalThis.fetch
+    const upstream = vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (String(input).startsWith("http://127.0.0.1:")) return nativeFetch(input, init)
+      return Promise.resolve(new Response(image, { headers: { "Content-Type": "image/jpeg" } }))
+    })
+    try {
+      const origin = await withRouter({})
+      const response = await fetch(`${origin}/api/product-image/cosmos/7896102501872?__path=product-image%2Fcosmos%2F7896102501872`)
+      expect(response.status).toBe(200)
+      expect(response.headers.get("content-type")).toBe("image/jpeg")
+      expect(new Uint8Array(await response.arrayBuffer())).toEqual(image)
+      expect(upstream).toHaveBeenCalledWith("https://cdn-cosmos.bluesoft.com.br/products/7896102501872", expect.any(Object))
+    } finally {
+      upstream.mockRestore()
+    }
+  })
 })
 
 describe("caminho da requisição após reescrita", () => {
@@ -56,6 +75,11 @@ describe("caminho da requisição após reescrita", () => {
   it("reconstrói o caminho e preserva os demais parâmetros", () => {
     expect(requestPathFromRewrite("/api?__path=catalogo%2Fproducts&name=caf%C3%A9"))
       .toBe("/api/catalogo/products?name=caf%C3%A9")
+  })
+
+  it("remove o parâmetro da reescrita quando a Vercel preserva o caminho original", () => {
+    expect(requestPathFromRewrite("/api/product-image/cosmos/7896102501872?__path=product-image%2Fcosmos%2F7896102501872"))
+      .toBe("/api/product-image/cosmos/7896102501872")
   })
 })
 

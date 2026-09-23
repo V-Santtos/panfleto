@@ -20,6 +20,9 @@ export function requestPathFromRewrite(rawUrl: string): string {
   if (rewritten === null) return rawUrl
   url.searchParams.delete(REWRITE_PARAM)
   const query = url.searchParams.toString()
+  // Vercel may preserve the original /api/... path while appending rewrite
+  // parameters. In that case the original path is authoritative.
+  if (url.pathname !== "/api") return `${url.pathname}${query ? `?${query}` : ""}`
   return `/api/${rewritten.replace(/^\/+/, "")}${query ? `?${query}` : ""}`
 }
 
