@@ -9,6 +9,8 @@ describe("fixed-origin image proxy", () => {
   it("maps an exact Cosmos thumbnail through the same local image boundary", () => {
     expect(remoteProductImage("/api/product-image/cosmos/7891000370100"))
       .toBe("https://cdn-cosmos.bluesoft.com.br/products/7891000370100")
+    expect(remoteProductImage("/api/product-image/cosmos/7891000370100?__path=product-image%2Fcosmos%2F7891000370100"))
+      .toBe("https://cdn-cosmos.bluesoft.com.br/products/7891000370100")
   })
   it("accepts a missing CDN content type only after identifying a real image signature", () => {
     expect(hasAllowedImageContentType(null)).toBe(true)

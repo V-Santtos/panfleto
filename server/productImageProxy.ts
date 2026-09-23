@@ -17,10 +17,15 @@ export function detectedImageContentType(image: Uint8Array): "image/jpeg" | "ima
 }
 
 export function remoteProductImage(path: string): string | undefined {
-  if (/^\/api\/product-image\/images\/products\/(?:\d+\/)+front_[a-z]{2}\.\d+\.(?:100|200|400|full)\.jpg$/.test(path)) {
-    return `https://images.openfoodfacts.org${path.slice(PREFIX.length)}`
+  const url = new URL(path, "http://127.0.0.1")
+  // A reescrita da Vercel pode acrescentar seu parâmetro ao caminho original.
+  // A origem remota continua definida somente pelo caminho validado abaixo.
+  if ([...url.searchParams.keys()].some((key) => key !== "__path")) return
+  const pathname = url.pathname
+  if (/^\/api\/product-image\/images\/products\/(?:\d+\/)+front_[a-z]{2}\.\d+\.(?:100|200|400|full)\.jpg$/.test(pathname)) {
+    return `https://images.openfoodfacts.org${pathname.slice(PREFIX.length)}`
   }
-  const cosmos = path.match(/^\/api\/product-image\/cosmos\/(\d{8}|\d{12,14})$/)
+  const cosmos = pathname.match(/^\/api\/product-image\/cosmos\/(\d{8}|\d{12,14})$/)
   return cosmos ? `https://cdn-cosmos.bluesoft.com.br/products/${cosmos[1]}` : undefined
 }
 
@@ -28,7 +33,12 @@ export function createProductImageHandler() {
   return async (req: IncomingMessage, res: ServerResponse, next: () => void = () => undefined): Promise<void> => {
         if (!req.url?.startsWith(PREFIX)) { next(); return }
         const remote = remoteProductImage(req.url)
-        if (req.method !== "GET" || !remote) { res.statusCode = 400; res.end("Imagem não permitida."); return }
+        if (req.method !== "GET" || !remote) {
+          res.statusCode = 400
+          res.setHeader("X-Image-Route-Path", new URL(req.url, "http://127.0.0.1").pathname)
+          res.end("Imagem não permitida.")
+          return
+        }
         const controller = new AbortController()
         const timeout = setTimeout(() => controller.abort(), 15_000)
         res.on("close", () => controller.abort())
