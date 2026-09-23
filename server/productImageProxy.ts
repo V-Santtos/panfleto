@@ -18,9 +18,8 @@ export function detectedImageContentType(image: Uint8Array): "image/jpeg" | "ima
 
 export function remoteProductImage(path: string): string | undefined {
   const url = new URL(path, "http://127.0.0.1")
-  // A reescrita da Vercel pode acrescentar seu parâmetro ao caminho original.
-  // A origem remota continua definida somente pelo caminho validado abaixo.
-  if ([...url.searchParams.keys()].some((key) => key !== "__path")) return
+  // A reescrita da Vercel acrescenta parâmetros ao caminho original. Eles não
+  // entram na URL remota: somente o caminho fixo validado abaixo a determina.
   const pathname = url.pathname
   if (/^\/api\/product-image\/images\/products\/(?:\d+\/)+front_[a-z]{2}\.\d+\.(?:100|200|400|full)\.jpg$/.test(pathname)) {
     return `https://images.openfoodfacts.org${pathname.slice(PREFIX.length)}`

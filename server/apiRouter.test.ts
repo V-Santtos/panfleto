@@ -56,7 +56,7 @@ describe("roteador da API em produção", () => {
     })
     try {
       const origin = await withRouter({})
-      const response = await fetch(`${origin}/api/product-image/cosmos/7896102501872?__path=product-image%2Fcosmos%2F7896102501872`)
+      const response = await fetch(`${origin}/api/product-image/cosmos/7896102501872?__path=product-image%2Fcosmos%2F7896102501872&vercelRewrite=1`)
       expect(response.status).toBe(200)
       expect(response.headers.get("content-type")).toBe("image/jpeg")
       expect(new Uint8Array(await response.arrayBuffer())).toEqual(image)
