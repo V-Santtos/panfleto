@@ -112,11 +112,13 @@ describe("product search UI", () => {
   })
 
   it("mostra o EAN de uma seleção existente e só libera nova busca por ação explícita", () => {
+    const onClearSelection = vi.fn()
     render(
       <ProductSearch
         selectedCode="7891000053508"
         selectedLabel="Nestlé Nescau 2.0"
         onSelect={vi.fn()}
+        onClearSelection={onClearSelection}
       />,
     )
     const input = screen.getByLabelText("Pesquisar produto por nome ou GTIN/EAN")
@@ -125,7 +127,7 @@ describe("product search UI", () => {
     fireEvent.click(screen.getByRole("button", { name: "Alterar busca" }))
     expect(input).toHaveValue("")
     expect(input).not.toHaveAttribute("readonly")
-    expect(screen.getByText(/A oferta atual permanece até você escolher outro produto/)).toBeVisible()
+    expect(onClearSelection).toHaveBeenCalledOnce()
   })
 
   it("limpa a pesquisa e devolve o foco ao receber uma nova oferta", async () => {

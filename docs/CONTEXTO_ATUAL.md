@@ -29,7 +29,7 @@ este arquivo continue curto e possa ser lido inteiro no início de qualquer sess
 - Em desktop (a partir de `980px`), a prévia ocupa a coluna direita como painel fixo abaixo da barra superior; ela não acompanha o fim do formulário. Em telas menores, permanece no fluxo vertical normal.
 - O topo da prévia permite selecionar Story ou Feed. As duas opções são funcionais para um produto: Story renderiza `1080 × 1920` e Feed renderiza um SVG independente de `1080 × 1350`, com fundo, placa, linha de base e regras de texto próprias. Selecionar Feed troca a prévia e o PNG; o PDF continua exclusivo do Story vertical.
 - A coluna de preenchimento expõe temas selecionáveis de interface: Padrão, Dia das Mães, Dia dos Pais, Natal, Páscoa, Festa Junina, Carnaval, Dia dos Namorados, Dia das Crianças, Black Friday e Ano-Novo. Padrão é o estado inicial; nesta etapa a escolha é apenas visual e não altera o SVG, a prévia ou a exportação.
-- O bloco de busca de embalagem separa três entradas: nome/marca procura somente produtos ativos do catálogo próprio; EAN/GTIN exato verifica primeiro o banco e só consulta Open Food Facts/Cosmos após ausência confirmada; cadastro manual cria um produto `draft` separado.
+- O bloco de busca de embalagem separa três entradas: nome/marca procura somente produtos ativos do catálogo próprio; EAN/GTIN exato verifica primeiro o banco e só consulta Open Food Facts/Cosmos após ausência confirmada; cadastro manual exige foto e salva produto e imagem juntos.
 - Para PNGs transparentes, o validador tolera uma margem de antialiasamento de até 1 px na borda da silhueta. Um toque real na borda continua bloqueando a foto como corte. Desde 6 de setembro, fotos em fundo branco também são medidas na resolução original em vez do canvas reduzido, o que corrigiu a reprovação indevida de packshots pequenos e bem enquadrados.
 - O Story é um SVG de `1080 × 1920`; o Feed é um SVG de `1080 × 1350`. Cada prévia gera seu próprio PNG pela mesma árvore SVG exibida; o PDF permanece uma página do Story.
 - Em 6 de setembro, os textos dinâmicos da placa do Feed/1 foram baixados dentro da área segura para aproveitar a parte inferior do painel. Como no Story, o SVG sobrepõe uma extensão vermelha central à faixa fixa do PSD. Para 1 e 2 linhas, a unidade fica centralizada logo após a base reta da faixa vermelha; para 3 linhas, ela vai para o canto direito da área amarela. Nome, unidade e preço usam coordenadas próprias do Feed.
@@ -56,7 +56,7 @@ este arquivo continue curto e possa ser lido inteiro no início de qualquer sess
 
 ## Próximo ponto de trabalho
 
-- Em 23 de setembro de 2026, a busca passou a travar o GTIN/EAN após a escolha de um produto e a trocar **Buscar** por **Alterar busca**. Desbloquear a pesquisa preserva a oferta e a foto atuais até uma nova seleção. A mudança foi validada por 245 testes e build; falta o aceite visual do usuário na interface publicada.
+- Em 23 de setembro de 2026, **Alterar busca** passou a limpar seleção, foto, recorte e oferta; **Remover foto** passou a retirar também a imagem do cartaz. O cadastro manual agora exige foto, mede sua geometria e distingue o resultado em laranja. Falta o aceite visual do usuário na interface publicada.
 
 ## Decisões em aberto — lembrar a cada sessão
 

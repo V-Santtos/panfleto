@@ -14,6 +14,7 @@ export type ValidatedImageBytes = {
 
 type ProductRow = {
   id: string
+  registration_method?: "gtin_lookup" | "manual"
   gtin: string | null
   canonical_name: string
   display_name: string
@@ -85,6 +86,7 @@ function productFromRow(row: ProductRow, primaryImage?: CatalogProductImage): Ca
   if (!Number.isFinite(quantity)) throw new CatalogRepositoryError("O banco retornou uma quantidade inválida.")
   return {
     id: row.id,
+    registrationMethod: row.registration_method === "manual" ? "manual" : "gtin_lookup",
     ...(row.gtin ? { gtin: row.gtin } : {}),
     canonicalName: row.canonical_name,
     displayName: row.display_name,
@@ -152,7 +154,7 @@ export class SupabaseCatalogRepository implements CatalogRepository {
   async findProductByGtin(gtin: string): Promise<CatalogProduct | undefined> {
     const { data, error } = await this.supabase
       .from("products")
-      .select("id,gtin,canonical_name,display_name,brand_name,default_quantity,default_unit,status")
+      .select("id,gtin,canonical_name,display_name,brand_name,default_quantity,default_unit,registration_method,status")
       .eq("gtin", gtin)
       .maybeSingle()
     if (error) databaseError(error)
@@ -174,14 +176,14 @@ export class SupabaseCatalogRepository implements CatalogRepository {
         metadata_origin: input.metadataOrigin,
         status: "draft",
       })
-      .select("id,gtin,canonical_name,display_name,brand_name,default_quantity,default_unit,status")
+      .select("id,gtin,canonical_name,display_name,brand_name,default_quantity,default_unit,registration_method,status")
       .single()
     if (error || !data) databaseError(error)
     return productFromRow(data as ProductRow)
   }
 
   async validateProductWithImage(input: ValidatedProductInput, image: ValidatedImageBytes): Promise<CatalogProduct> {
-    const productSelection = "id,gtin,canonical_name,display_name,brand_name,default_quantity,default_unit,status"
+    const productSelection = "id,gtin,canonical_name,display_name,brand_name,default_quantity,default_unit,registration_method,status"
     let productRow: ProductRow | undefined
     let createdProduct = false
 
@@ -192,6 +194,9 @@ export class SupabaseCatalogRepository implements CatalogRepository {
     } else if (input.gtin) {
       const { data, error } = await this.supabase.from("products").select(productSelection).eq("gtin", input.gtin).maybeSingle()
       if (error) databaseError(error)
+      if (data && data.status === "active" && input.registrationMethod === "manual") {
+        throw new CatalogRepositoryError("Já existe um produto com este GTIN/EAN.", "conflict")
+      }
       productRow = data as ProductRow | undefined
     }
 
@@ -367,7 +372,7 @@ export class SupabaseCatalogRepository implements CatalogRepository {
       .update({ display_name: displayName.trim().replace(/\s+/g, " ") })
       .eq("id", productId)
       .eq("status", "active")
-      .select("id,gtin,canonical_name,display_name,brand_name,default_quantity,default_unit,status")
+      .select("id,gtin,canonical_name,display_name,brand_name,default_quantity,default_unit,registration_method,status")
       .maybeSingle()
     if (error) databaseError(error)
     if (!data) throw new CatalogRepositoryError("Produto ativo não encontrado.", "not_found")

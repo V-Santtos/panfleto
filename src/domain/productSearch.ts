@@ -17,6 +17,7 @@ export type ProductPhotoOption = ImageProvenance & {
 
 export type ProductCandidate = ImageProvenance & {
   code: string
+  registrationMethod?: "gtin_lookup" | "manual"
   productName: string
   canonicalName?: string
   brands: string[]
@@ -235,6 +236,7 @@ export function productCandidateFromCatalog(product: CatalogProduct): ProductCan
   const image = product.primaryImage
   return {
     code: product.gtin ?? `catalog:${product.id}`,
+    registrationMethod: product.registrationMethod,
     productName: product.displayName,
     canonicalName: product.canonicalName,
     brands: product.brandName ? [product.brandName] : [],

@@ -54,6 +54,7 @@ export function App() {
   const [selectedProduct, setSelectedProduct] = useState<ProductCandidate>()
   const [manualImageFile, setManualImageFile] = useState<File>()
   const [manualImageUrl, setManualImageUrl] = useState<string>()
+  const [manualImageGeometry, setManualImageGeometry] = useState<ProductImageGeometry>()
   const [kieImageUrl, setKieImageUrl] = useState<string>()
   const [kieGeometry, setKieGeometry] = useState<ProductImageGeometry>()
   const [removingBackgroundWithKie, setRemovingBackgroundWithKie] = useState(false)
@@ -96,7 +97,7 @@ export function App() {
   const errors = useMemo(() => validateOfferDraft(draft), [draft])
   const offer = useMemo(() => offerForPreview(draft), [draft])
   const productImageUrl = kieImageUrl ?? manualImageUrl ?? processedImageUrl
-  const productImageGeometry = kieGeometry ?? processedImageGeometry
+  const productImageGeometry = kieGeometry ?? manualImageGeometry ?? processedImageGeometry
   const isValid = Object.keys(errors).length === 0 && Boolean(selectedProduct && productImageUrl) && !processingImage
 
   useEffect(() => () => {
@@ -131,6 +132,7 @@ export function App() {
     setSelectedProduct(candidate)
     setManualImageFile(undefined)
     setManualImageUrl(undefined)
+    setManualImageGeometry(undefined)
     setKieImageUrl(undefined)
     setKieGeometry(undefined)
     setRemovingBackgroundWithKie(false)
@@ -192,6 +194,33 @@ export function App() {
       })
   }
 
+  const clearProductSelection = () => {
+    activeProcessing.current?.abort()
+    activeProcessing.current = null
+    activeKieProcessing.current?.abort()
+    activeKieProcessing.current = null
+    revokeObjectUrl(manualImageUrl)
+    revokeObjectUrl(kieImageUrl)
+    revokeObjectUrl(processedImageUrl)
+    setSelectedProduct(undefined)
+    setManualImageFile(undefined)
+    setManualImageUrl(undefined)
+    setManualImageGeometry(undefined)
+    setKieImageUrl(undefined)
+    setKieGeometry(undefined)
+    setRemovingBackgroundWithKie(false)
+    setKieError("")
+    setProcessedImageUrl(undefined)
+    setProcessedImageGeometry(undefined)
+    setProcessingImage(false)
+    setProcessingError("")
+    resetProductPlacements()
+    setDraft({ ...EMPTY_OFFER_DRAFT })
+    setConfirmed(false)
+    setExportError("")
+    setExportSuccess(false)
+  }
+
   const selectManualImage = (file: File) => {
     activeProcessing.current?.abort()
     activeProcessing.current = null
@@ -202,10 +231,11 @@ export function App() {
     revokeObjectUrl(processedImageUrl)
     setProcessedImageUrl(undefined)
     setProcessedImageGeometry(undefined)
-    setProcessingImage(false)
+    setManualImageGeometry(undefined)
     setProcessingError("")
     setManualImageFile(file)
-    setManualImageUrl(trackObjectUrl(URL.createObjectURL(file)))
+    const imageUrl = trackObjectUrl(URL.createObjectURL(file))
+    setManualImageUrl(imageUrl)
     setKieImageUrl(undefined)
     setKieGeometry(undefined)
     setRemovingBackgroundWithKie(false)
@@ -214,17 +244,43 @@ export function App() {
     setConfirmed(false)
     setExportError("")
     setExportSuccess(false)
+    const controller = new AbortController()
+    activeProcessing.current = controller
+    setProcessingImage(true)
+    void measureProductPlacement(imageUrl, { signal: controller.signal })
+      .then((geometry) => {
+        if (activeProcessing.current !== controller || controller.signal.aborted) return
+        setManualImageGeometry(geometry)
+      })
+      .catch((error: unknown) => {
+        if (activeProcessing.current !== controller || controller.signal.aborted) return
+        setProcessingError(error instanceof Error ? error.message : "Não foi possível medir a embalagem.")
+      })
+      .finally(() => {
+        if (activeProcessing.current === controller) {
+          activeProcessing.current = null
+          setProcessingImage(false)
+        }
+      })
   }
 
   const removeManualImage = () => {
+    activeProcessing.current?.abort()
+    activeProcessing.current = null
     activeKieProcessing.current?.abort()
     activeKieProcessing.current = null
     revokeObjectUrl(manualImageUrl)
     revokeObjectUrl(kieImageUrl)
+    revokeObjectUrl(processedImageUrl)
     setManualImageFile(undefined)
     setManualImageUrl(undefined)
+    setManualImageGeometry(undefined)
     setKieImageUrl(undefined)
     setKieGeometry(undefined)
+    setProcessedImageUrl(undefined)
+    setProcessedImageGeometry(undefined)
+    setProcessingImage(false)
+    setProcessingError("")
     setRemovingBackgroundWithKie(false)
     setKieError("")
     resetProductPlacements()
@@ -266,6 +322,7 @@ export function App() {
     setSelectedProduct(undefined)
     setManualImageFile(undefined)
     setManualImageUrl(undefined)
+    setManualImageGeometry(undefined)
     setKieImageUrl(undefined)
     setKieGeometry(undefined)
     setRemovingBackgroundWithKie(false)
@@ -498,8 +555,10 @@ export function App() {
           <ProductSearch
             selectedCode={selectedProduct?.code}
             selectedLabel={selectedProduct?.productName}
+            selectedRegistrationMethod={selectedProduct?.registrationMethod}
             resetVersion={searchResetVersion}
             onSelect={selectProduct}
+            onClearSelection={clearProductSelection}
           />
 
           {selectedProduct ? (

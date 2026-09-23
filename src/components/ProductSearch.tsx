@@ -13,7 +13,9 @@ import {
 type ProductSearchProps = {
   selectedCode?: string
   selectedLabel?: string
+  selectedRegistrationMethod?: "gtin_lookup" | "manual"
   onSelect: (candidate: ProductCandidate) => void
+  onClearSelection?: () => void
   resetVersion?: number
 }
 
@@ -87,7 +89,7 @@ function approvedCatalogImages(candidates: ProductCandidate[]): QualifiedCandida
     : [])
 }
 
-export function ProductSearch({ selectedCode, selectedLabel, onSelect, resetVersion = 0 }: ProductSearchProps) {
+export function ProductSearch({ selectedCode, selectedLabel, selectedRegistrationMethod, onSelect, onClearSelection, resetVersion = 0 }: ProductSearchProps) {
   const selectedQuery = selectedCode && isValidGtin(selectedCode) ? selectedCode : selectedLabel ?? ""
   const [query, setQuery] = useState(selectedQuery)
   const [searchUnlocked, setSearchUnlocked] = useState(false)
@@ -105,7 +107,7 @@ export function ProductSearch({ selectedCode, selectedLabel, onSelect, resetVers
   const previousResetVersion = useRef(resetVersion)
   const candidates = result?.candidates ?? []
   const suggestionsOpen = candidates.length > 0 && !manualOpen
-  const hasRegisteredSuggestion = candidates.some((candidate) => Boolean(candidate.catalogProductId))
+  const hasRegisteredSuggestion = candidates.some((candidate) => Boolean(candidate.catalogProductId && candidate.registrationMethod !== "manual"))
   const hasCommittedSelection = Boolean(committedQuery.current && query === committedQuery.current && !searchUnlocked)
   const evaluatedByOriginalUrl = new Map((qualification?.evaluations ?? []).map((candidate) => [candidate.url_original, candidate]))
 
@@ -242,6 +244,7 @@ export function ProductSearch({ selectedCode, selectedLabel, onSelect, resetVers
   }
 
   const unlockSearch = () => {
+    onClearSelection?.()
     updateQuery("")
     setSearchUnlocked(true)
     window.setTimeout(() => inputRef.current?.focus(), 0)
@@ -310,7 +313,7 @@ export function ProductSearch({ selectedCode, selectedLabel, onSelect, resetVers
       </div>
 
       <div className="search-row">
-        <div className={`search-combobox${suggestionsOpen ? " is-open" : ""}${hasRegisteredSuggestion ? " has-registered-suggestion" : ""}${hasCommittedSelection ? " has-selection" : ""}`}>
+        <div className={`search-combobox${suggestionsOpen ? " is-open" : ""}${hasRegisteredSuggestion ? " has-registered-suggestion" : ""}${hasCommittedSelection ? " has-selection" : ""}${hasCommittedSelection && selectedRegistrationMethod === "manual" ? " is-manual-selection" : ""}`}>
           <input
             ref={inputRef}
             className="input"
@@ -370,8 +373,9 @@ export function ProductSearch({ selectedCode, selectedLabel, onSelect, resetVers
                     ? "Foto do Cosmos disponível"
                     : defaultPhoto.selectable.qualification.background === "transparent" ? "Foto transparente" : "Foto em fundo branco"
                   : "Sem foto aprovada"
+                const manualRegistration = candidate.registrationMethod === "manual"
                 return <article
-                  className={`product-result${candidate.catalogProductId ? " is-registered" : ""}${activeOptionIndex === index ? " is-highlighted" : ""}`}
+                  className={`product-result${manualRegistration ? " is-manual" : candidate.catalogProductId ? " is-registered" : ""}${activeOptionIndex === index ? " is-highlighted" : ""}`}
                   key={candidate.code}
                 >
                   <button
@@ -387,9 +391,9 @@ export function ProductSearch({ selectedCode, selectedLabel, onSelect, resetVers
                   >
                     {defaultPhoto?.selectable ? <img src={defaultPhoto.selectable.thumbnailUrl} alt="" loading="lazy" /> : <span className="product-image-placeholder" aria-hidden="true">Sem foto</span>}
                     <span className="result-copy">
-                      <span className={`result-index${candidate.catalogProductId ? " is-registered" : ""}`}>
-                        {candidate.catalogProductId ? <span className="search-status-dot search-status-dot-registered" aria-hidden="true" /> : null}
-                        {candidate.catalogProductId ? "Já cadastrado" : photoStatus}
+                      <span className={`result-index${manualRegistration ? " is-manual" : candidate.catalogProductId ? " is-registered" : ""}`}>
+                        {candidate.catalogProductId ? <span className={`search-status-dot ${manualRegistration ? "search-status-dot-manual" : "search-status-dot-registered"}`} aria-hidden="true" /> : null}
+                        {manualRegistration ? "Cadastro manual" : candidate.catalogProductId ? "Já cadastrado" : photoStatus}
                       </span>
                       <strong>{candidate.productName}</strong>
                       <small>{[candidate.brands.join(", "), candidate.quantity, candidate.code ? `GTIN/EAN ${candidate.code}` : ""].filter(Boolean).join(" · ")}</small>
@@ -430,10 +434,8 @@ export function ProductSearch({ selectedCode, selectedLabel, onSelect, resetVers
 
       <p className="search-summary" id="product-search-help">
         {hasCommittedSelection
-          ? "Produto escolhido. Use Alterar busca para pesquisar outro; a oferta atual será mantida até você escolher um novo produto."
-          : selectedCode && searchUnlocked
-            ? "A oferta atual permanece até você escolher outro produto. Nome e marca pesquisam somente produtos já validados."
-            : "Nome e marca pesquisam somente produtos já validados. Produto novo entra por EAN/GTIN exato ou cadastro manual."}
+          ? "Produto escolhido. Alterar busca limpa a seleção e a foto atual para pesquisar outro produto."
+          : "Nome e marca pesquisam somente produtos já validados. Produto novo entra por EAN/GTIN exato ou cadastro manual."}
       </p>
       <ul className="search-status-legend" aria-label="Estados futuros dos produtos">
         <li>
@@ -446,7 +448,7 @@ export function ProductSearch({ selectedCode, selectedLabel, onSelect, resetVers
         </li>
         <li>
           <span className="search-status-dot search-status-dot-manual" aria-hidden="true" />
-          <span><strong>Cadastro manual</strong> cria um rascunho separado para revisão.</span>
+          <span><strong>Cadastro manual</strong> exige uma foto da embalagem.</span>
         </li>
       </ul>
       <ManualProductForm

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -21,9 +21,10 @@ vi.mock("../export/svgToPng", () => ({
 }))
 vi.mock("../images/processingClient", () => ({ measureProductPlacement: measure }))
 vi.mock("../components/ProductSearch", () => ({
-  ProductSearch: ({ onSelect, resetVersion }: { onSelect: (candidate: object) => void; resetVersion: number }) => (
+  ProductSearch: ({ onSelect, onClearSelection, resetVersion }: { onSelect: (candidate: object) => void; onClearSelection: () => void; resetVersion: number }) => (
     <div>
       <span data-testid="search-reset-version">{resetVersion}</span>
+      <button type="button" onClick={onClearSelection}>Alterar busca de teste</button>
       <button type="button" onClick={() => onSelect({
         code: "7891000379691",
         productName: "Nescau 2.0",
@@ -64,6 +65,26 @@ afterEach(() => {
 })
 
 describe("persistência no download", () => {
+  it("remove a foto da prévia e limpa a oferta ao alterar a busca", async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(screen.getByRole("button", { name: "Selecionar produto cadastrado" }))
+    expect(screen.getByRole("button", { name: "Remover foto" })).toBeVisible()
+    await user.click(screen.getByRole("button", { name: "Alterar busca de teste" }))
+    expect(screen.queryByRole("button", { name: "Remover foto" })).not.toBeInTheDocument()
+    expect(screen.getByLabelText("Nome no cartaz")).toHaveValue("")
+    expect(within(screen.getByRole("region", { name: "Prévia do Story" })).queryByRole("img", { name: /Nescau/i })).not.toBeInTheDocument()
+  })
+
+  it("remove a foto selecionada também do cartaz", async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(screen.getByRole("button", { name: "Selecionar produto cadastrado" }))
+    await user.click(screen.getByRole("button", { name: "Remover foto" }))
+    expect(screen.queryByRole("button", { name: "Remover foto" })).not.toBeInTheDocument()
+    expect(screen.getByText(/Envie a foto da embalagem/)).toBeVisible()
+  })
+
   it("ativa produto e foto antes de iniciar o PNG", async () => {
     const geometry = {
       sourceWidth: 1000,

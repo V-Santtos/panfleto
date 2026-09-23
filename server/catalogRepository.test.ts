@@ -43,6 +43,7 @@ describe("SupabaseCatalogRepository.updateProductDisplayName", () => {
 
     await expect(repository.updateProductDisplayName(row.id, "  Nescau   da semana  ")).resolves.toEqual({
       id: row.id,
+      registrationMethod: "gtin_lookup",
       gtin: row.gtin,
       canonicalName: row.canonical_name,
       displayName: row.display_name,

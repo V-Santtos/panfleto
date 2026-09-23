@@ -23,6 +23,7 @@ export type CatalogProductImage = {
 
 export type CatalogProduct = {
   id: string
+  registrationMethod?: "gtin_lookup" | "manual"
   gtin?: string
   canonicalName: string
   displayName: string

@@ -246,9 +246,11 @@ export function createCatalogApiHandler(repositoryProvider: RepositoryProvider) 
         return
       }
 
-      const creationMethod = url.pathname === `${PREFIX}/products/manual`
-        ? "manual"
-        : url.pathname === `${PREFIX}/products/from-gtin` ? "gtin_lookup" : undefined
+      if (url.pathname === `${PREFIX}/products/manual`) {
+        if (request.method !== "POST") { sendJson(response, 405, { code: "METHOD_NOT_ALLOWED", message: "Método não permitido." }); return }
+        throw new RequestValidationError("Envie uma foto ao cadastrar manualmente o produto.")
+      }
+      const creationMethod = url.pathname === `${PREFIX}/products/from-gtin` ? "gtin_lookup" : undefined
       if (creationMethod) {
         if (request.method !== "POST") { sendJson(response, 405, { code: "METHOD_NOT_ALLOWED", message: "Método não permitido." }); return }
         const product = await repository.createDraftProduct(draftProductInput(await readJsonBody(request), creationMethod))

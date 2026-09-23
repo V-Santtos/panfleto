@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from "react"
 
-import { createDraftProduct } from "../api/catalogClient"
+import { validateProductWithImage } from "../api/catalogClient"
 import { PRESENTATION_UNITS, PRESENTATION_UNIT_LABELS, type PresentationUnit } from "../domain/offer"
 import { productCandidateFromCatalog, type ProductCandidate } from "../domain/productSearch"
+import { measureProductPlacement } from "../images/processingClient"
 
 type ManualProductFormProps = {
   onCreated: (candidate: ProductCandidate) => void
@@ -18,6 +19,7 @@ export function ManualProductForm({ onCreated, open, disabled = false, disabledD
   const [gtin, setGtin] = useState("")
   const [quantity, setQuantity] = useState("1")
   const [unit, setUnit] = useState<PresentationUnit>("unidade")
+  const [photo, setPhoto] = useState<File>()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
@@ -27,10 +29,14 @@ export function ManualProductForm({ onCreated, open, disabled = false, disabledD
     const parsedQuantity = Number(quantity.replace(",", "."))
     if (!name.trim()) { setError("Informe o nome do produto."); return }
     if (!Number.isFinite(parsedQuantity) || parsedQuantity <= 0) { setError("Informe uma quantidade maior que zero."); return }
+    if (!photo) { setError("Escolha uma foto da embalagem antes de cadastrar o produto."); return }
     setSaving(true)
     setError("")
+    let photoUrl: string | undefined
     try {
-      const product = await createDraftProduct({
+      photoUrl = URL.createObjectURL(photo)
+      const geometry = await measureProductPlacement(photoUrl)
+      const product = await validateProductWithImage({
         ...(gtin.trim() ? { gtin: gtin.trim().replace(/[\s-]/g, "") } : {}),
         canonicalName: name.trim(),
         displayName: name.trim(),
@@ -39,12 +45,23 @@ export function ManualProductForm({ onCreated, open, disabled = false, disabledD
         defaultUnit: unit,
         registrationMethod: "manual",
         metadataOrigin: "manual",
-      })
+        sourceOrigin: "upload_usuario",
+        processingMethod: "alpha_preserved",
+        pipelineVersion: "manual-registration-v1",
+        sourceWidthPx: geometry.sourceWidth,
+        sourceHeightPx: geometry.sourceHeight,
+        visibleLeftPx: geometry.visibleBounds.left,
+        visibleTopPx: geometry.visibleBounds.top,
+        visibleWidthPx: geometry.visibleBounds.width,
+        visibleHeightPx: geometry.visibleBounds.height,
+        hasIntrinsicContactShadow: geometry.hasIntrinsicContactShadow === true,
+      }, photo)
       onCreated(productCandidateFromCatalog(product))
       onOpenChange(false)
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "Não foi possível criar o rascunho.")
+      setError(saveError instanceof Error ? saveError.message : "Não foi possível cadastrar o produto.")
     } finally {
+      if (photoUrl) URL.revokeObjectURL(photoUrl)
       setSaving(false)
     }
   }
@@ -91,9 +108,26 @@ export function ManualProductForm({ onCreated, open, disabled = false, disabledD
           </select>
         </label>
       </div>
-      <p className="field-hint">O rascunho só ficará pesquisável por nome depois da embalagem ser revisada e aprovada.</p>
+      <label className="field">
+        <span className="field-label">Foto da embalagem</span>
+        <input
+          className="input"
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          aria-label="Foto do produto manual"
+          onChange={(event) => {
+            const file = event.currentTarget.files?.[0]
+            if (!file) { setPhoto(undefined); return }
+            if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) { setPhoto(undefined); setError("Escolha uma foto PNG, JPEG ou WebP."); return }
+            if (file.size > 12 * 1024 * 1024) { setPhoto(undefined); setError("A foto deve ter no máximo 12 MB."); return }
+            setPhoto(file)
+            setError("")
+          }}
+        />
+      </label>
+      {photo ? <p className="field-hint">Foto selecionada: {photo.name}</p> : <p className="field-hint">A foto é obrigatória para cadastrar o produto.</p>}
       {error ? <p className="search-error" role="alert">{error}</p> : null}
-      <button className="button button-primary" type="submit" disabled={saving}>{saving ? "Criando…" : "Criar rascunho"}</button>
+      <button className="button button-primary" type="submit" disabled={saving}>{saving ? "Cadastrando…" : "Cadastrar produto"}</button>
     </form>
   )
 }

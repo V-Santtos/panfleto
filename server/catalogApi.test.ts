@@ -70,7 +70,7 @@ describe("API local do catálogo", () => {
     expect(repository.findProductByGtin).toHaveBeenCalledWith("7891000379691")
   })
 
-  it("cria cadastro manual como rascunho sem exigir GTIN", async () => {
+  it("recusa cadastro manual sem foto", async () => {
     const repository = fakeRepository()
     const origin = await withServer(repository)
     const response = await fetch(`${origin}/api/catalogo/products/manual`, {
@@ -78,14 +78,14 @@ describe("API local do catálogo", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ canonicalName: "Café", defaultQuantity: 500, defaultUnit: "g" }),
     })
-    expect(response.status).toBe(201)
-    expect(repository.createDraftProduct).toHaveBeenCalledWith(expect.objectContaining({ registrationMethod: "manual", metadataOrigin: "manual" }))
+    expect(response.status).toBe(400)
+    expect(repository.createDraftProduct).not.toHaveBeenCalled()
   })
 
   it("recusa corpo malformado e método incorreto", async () => {
     const repository = fakeRepository()
     const origin = await withServer(repository)
-    const malformed = await fetch(`${origin}/api/catalogo/products/manual`, { method: "POST", body: "{" })
+    const malformed = await fetch(`${origin}/api/catalogo/products/from-gtin`, { method: "POST", body: "{" })
     expect(malformed.status).toBe(400)
     const method = await fetch(`${origin}/api/catalogo/products`, { method: "POST" })
     expect(method.status).toBe(405)

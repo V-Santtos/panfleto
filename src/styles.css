@@ -746,6 +746,11 @@ button {
   box-shadow: inset 3px 0 0 var(--success);
 }
 
+.search-combobox.has-selection.is-manual-selection .input {
+  border-color: #bc7540;
+  box-shadow: inset 3px 0 0 #bc7540;
+}
+
 .search-row .button {
   flex: 0 0 auto;
 }
@@ -905,6 +910,16 @@ button {
   box-shadow: inset 0 0 0 2px var(--success);
 }
 
+.product-result.is-manual,
+.product-result.is-manual:hover {
+  border-color: #bc7540;
+  background: #fff8f0;
+}
+
+.product-result.is-manual.is-highlighted {
+  box-shadow: inset 0 0 0 2px #bc7540;
+}
+
 .result-index {
   display: flex;
   align-items: center;
@@ -919,6 +934,10 @@ button {
 
 .result-index.is-registered {
   color: var(--success);
+}
+
+.result-index.is-manual {
+  color: #81511e;
 }
 
 .result-index .search-status-dot {
