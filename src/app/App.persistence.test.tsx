@@ -21,10 +21,9 @@ vi.mock("../export/svgToPng", () => ({
 }))
 vi.mock("../images/processingClient", () => ({ measureProductPlacement: measure }))
 vi.mock("../components/ProductSearch", () => ({
-  ProductSearch: ({ onSelect, onClearSelection, resetVersion }: { onSelect: (candidate: object) => void; onClearSelection: () => void; resetVersion: number }) => (
+  ProductSearch: ({ onSelect, resetVersion }: { onSelect: (candidate: object) => void; resetVersion: number }) => (
     <div>
       <span data-testid="search-reset-version">{resetVersion}</span>
-      <button type="button" onClick={onClearSelection}>Limpar produto selecionado</button>
       <button type="button" onClick={() => onSelect({
         code: "7891000379691",
         productName: "Nescau 2.0",
@@ -162,19 +161,4 @@ describe("persistência no download", () => {
     expect(screen.queryByRole("button", { name: "Criar nova oferta" })).not.toBeInTheDocument()
   })
 
-  it("remove a embalagem quando a pesquisa desfaz a seleção", async () => {
-    const user = userEvent.setup()
-    render(<App />)
-
-    await user.click(screen.getByRole("button", { name: "Selecionar produto cadastrado" }))
-    expect(screen.getByText("Foto encontrada", { selector: "strong" })).toBeVisible()
-    expect(screen.getByLabelText("Nome no cartaz")).toHaveValue("Nescau 2.0")
-
-    await user.click(screen.getByRole("button", { name: "Limpar produto selecionado" }))
-
-    expect(screen.queryByText("Foto encontrada", { selector: "strong" })).not.toBeInTheDocument()
-    expect(screen.getByLabelText("Nome no cartaz")).toHaveValue("")
-    expect(screen.getByLabelText("Quantidade")).toHaveValue("")
-    expect(screen.getByRole("checkbox", { name: /Conferi produto/i })).toBeDisabled()
-  })
 })

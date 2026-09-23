@@ -61,6 +61,12 @@ O mapa de arquivos e integrações vive em [`MAPA_DO_PROJETO.md`](MAPA_DO_PROJET
 
 ## Busca de produto e imagem
 
+### Seleção travada na busca — 23 de setembro de 2026
+
+- Depois de escolher um produto ou uma foto, a barra mostra o GTIN/EAN quando ele existe e fica somente leitura. O botão **Buscar** passa a ser **Alterar busca**.
+- **Alterar busca** libera e limpa apenas o campo de pesquisa. Produto, foto, recorte da Kie e dados da oferta atual permanecem até o operador escolher outro produto. A busca nova não é disparada automaticamente pelo desbloqueio.
+- Ao escolher outro produto, a seleção substitui a anterior. **Criar nova oferta** continua sendo a ação separada que limpa o rascunho completo.
+
 ### Catálogo próprio e motor gratuito — Open Food Facts
 
 - Busca textual por nome/marca usa somente a função `search_active_products` no catálogo próprio.

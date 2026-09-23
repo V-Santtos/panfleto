@@ -192,32 +192,6 @@ export function App() {
       })
   }
 
-  const clearProductSelection = () => {
-    activeProcessing.current?.abort()
-    activeProcessing.current = null
-    activeKieProcessing.current?.abort()
-    activeKieProcessing.current = null
-    revokeObjectUrl(manualImageUrl)
-    revokeObjectUrl(kieImageUrl)
-    revokeObjectUrl(processedImageUrl)
-    setSelectedProduct(undefined)
-    setManualImageFile(undefined)
-    setManualImageUrl(undefined)
-    setKieImageUrl(undefined)
-    setKieGeometry(undefined)
-    setRemovingBackgroundWithKie(false)
-    setKieError("")
-    setProcessedImageUrl(undefined)
-    setProcessedImageGeometry(undefined)
-    setProcessingImage(false)
-    setProcessingError("")
-    resetProductPlacements()
-    setDraft((current) => ({ ...current, productName: "", quantity: "", unit: "g" }))
-    setConfirmed(false)
-    setExportError("")
-    setExportSuccess(false)
-  }
-
   const selectManualImage = (file: File) => {
     activeProcessing.current?.abort()
     activeProcessing.current = null
@@ -526,7 +500,6 @@ export function App() {
             selectedLabel={selectedProduct?.productName}
             resetVersion={searchResetVersion}
             onSelect={selectProduct}
-            onClearSelection={clearProductSelection}
           />
 
           {selectedProduct ? (

@@ -56,6 +56,8 @@ este arquivo continue curto e possa ser lido inteiro no início de qualquer sess
 
 ## Próximo ponto de trabalho
 
+- Em 23 de setembro de 2026, a busca passou a travar o GTIN/EAN após a escolha de um produto e a trocar **Buscar** por **Alterar busca**. Desbloquear a pesquisa preserva a oferta e a foto atuais até uma nova seleção. A mudança foi validada por 245 testes e build; falta o aceite visual do usuário na interface publicada.
+
 ## Decisões em aberto — lembrar a cada sessão
 
 Estas ficaram **explicitamente em aberto por decisão do usuário** em 7 de setembro. O

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { classifyCatalogSearch } from "../domain/catalog"
+import { classifyCatalogSearch, isValidGtin } from "../domain/catalog"
 import { qualifyCandidates, type ImageCandidate, type QualificationProgress, type QualifiedCandidate } from "../images/qualificationClient"
 import { ManualProductForm } from "./ManualProductForm"
 
@@ -14,7 +14,6 @@ type ProductSearchProps = {
   selectedCode?: string
   selectedLabel?: string
   onSelect: (candidate: ProductCandidate) => void
-  onClearSelection?: () => void
   resetVersion?: number
 }
 
@@ -88,8 +87,10 @@ function approvedCatalogImages(candidates: ProductCandidate[]): QualifiedCandida
     : [])
 }
 
-export function ProductSearch({ selectedCode, selectedLabel, onSelect, onClearSelection, resetVersion = 0 }: ProductSearchProps) {
-  const [query, setQuery] = useState(selectedLabel ?? "")
+export function ProductSearch({ selectedCode, selectedLabel, onSelect, resetVersion = 0 }: ProductSearchProps) {
+  const selectedQuery = selectedCode && isValidGtin(selectedCode) ? selectedCode : selectedLabel ?? ""
+  const [query, setQuery] = useState(selectedQuery)
+  const [searchUnlocked, setSearchUnlocked] = useState(false)
   const [result, setResult] = useState<ProductSearchResult>()
   const [qualification, setQualification] = useState<QualificationProgress>()
   const [loading, setLoading] = useState(false)
@@ -99,14 +100,13 @@ export function ProductSearch({ selectedCode, selectedLabel, onSelect, onClearSe
   const activeSearch = useRef<AbortController | null>(null)
   const pendingSearchTimer = useRef<number | undefined>(undefined)
   const inputRef = useRef<HTMLInputElement>(null)
-  const committedQuery = useRef(selectedLabel ?? "")
-  const selectionDismissed = useRef(false)
+  const committedQuery = useRef(selectedQuery)
   const previousSelectedCode = useRef(selectedCode)
   const previousResetVersion = useRef(resetVersion)
   const candidates = result?.candidates ?? []
   const suggestionsOpen = candidates.length > 0 && !manualOpen
   const hasRegisteredSuggestion = candidates.some((candidate) => Boolean(candidate.catalogProductId))
-  const hasCommittedSelection = Boolean(selectedCode && committedQuery.current && query === committedQuery.current)
+  const hasCommittedSelection = Boolean(committedQuery.current && query === committedQuery.current && !searchUnlocked)
   const evaluatedByOriginalUrl = new Map((qualification?.evaluations ?? []).map((candidate) => [candidate.url_original, candidate]))
 
   useEffect(() => () => {
@@ -116,20 +116,17 @@ export function ProductSearch({ selectedCode, selectedLabel, onSelect, onClearSe
   }, [])
 
   useEffect(() => {
-    if (previousSelectedCode.current !== selectedCode) {
-      previousSelectedCode.current = selectedCode
-      selectionDismissed.current = false
-    }
-    if (selectionDismissed.current || !selectedCode || !selectedLabel || committedQuery.current || query.trim()) return
-    committedQuery.current = selectedLabel
-    setQuery(selectedLabel)
-  }, [query, selectedCode, selectedLabel])
+    if (previousSelectedCode.current === selectedCode) return
+    previousSelectedCode.current = selectedCode
+    if (!selectedCode) return
+    committedQuery.current = selectedQuery
+    setQuery(selectedQuery)
+    setSearchUnlocked(false)
+  }, [selectedCode, selectedQuery])
 
   const updateQuery = (value: string) => {
     if (committedQuery.current && value !== committedQuery.current) {
       committedQuery.current = ""
-      selectionDismissed.current = true
-      onClearSelection?.()
     }
     if (pendingSearchTimer.current !== undefined) {
       window.clearTimeout(pendingSearchTimer.current)
@@ -227,7 +224,7 @@ export function ProductSearch({ selectedCode, selectedLabel, onSelect, onClearSe
     setManualOpen(false)
     setActiveOptionIndex(-1)
     committedQuery.current = ""
-    selectionDismissed.current = false
+    setSearchUnlocked(false)
     const focusTimer = window.setTimeout(() => {
       inputRef.current?.scrollIntoView?.({ behavior: "smooth", block: "center" })
       inputRef.current?.focus({ preventScroll: true })
@@ -236,17 +233,18 @@ export function ProductSearch({ selectedCode, selectedLabel, onSelect, onClearSe
   }, [resetVersion])
 
   const handleSearch = () => {
-    if (manualOpen) return
-    if (committedQuery.current) {
-      committedQuery.current = ""
-      selectionDismissed.current = true
-      onClearSelection?.()
-    }
+    if (manualOpen || hasCommittedSelection) return
     if (pendingSearchTimer.current !== undefined) {
       window.clearTimeout(pendingSearchTimer.current)
       pendingSearchTimer.current = undefined
     }
     void executeSearch(query)
+  }
+
+  const unlockSearch = () => {
+    updateQuery("")
+    setSearchUnlocked(true)
+    window.setTimeout(() => inputRef.current?.focus(), 0)
   }
 
   const updateManualOpen = (open: boolean) => {
@@ -282,9 +280,10 @@ export function ProductSearch({ selectedCode, selectedLabel, onSelect, onClearSe
     activeSearch.current?.abort()
     activeSearch.current = null
     const selected = candidateForSelection(candidate, selectedPhoto)
-    selectionDismissed.current = false
-    committedQuery.current = selected.productName
-    setQuery(selected.productName)
+    const lockedQuery = isValidGtin(selected.code) ? selected.code : selected.productName
+    committedQuery.current = lockedQuery
+    setQuery(lockedQuery)
+    setSearchUnlocked(false)
     setResult(undefined)
     setQualification(undefined)
     setActiveOptionIndex(-1)
@@ -322,8 +321,10 @@ export function ProductSearch({ selectedCode, selectedLabel, onSelect, onClearSe
             aria-controls="product-search-suggestions"
             aria-activedescendant={suggestionsOpen && activeOptionIndex >= 0 ? `product-suggestion-${activeOptionIndex}` : undefined}
             value={query}
+            readOnly={hasCommittedSelection}
             onChange={(event) => updateQuery(event.target.value)}
             onKeyDown={(event) => {
+              if (hasCommittedSelection) return
               if (event.key === "ArrowDown" && candidates.length) {
                 event.preventDefault()
                 setActiveOptionIndex((current) => Math.min(current + 1, candidates.length - 1))
@@ -422,13 +423,17 @@ export function ProductSearch({ selectedCode, selectedLabel, onSelect, onClearSe
             </div>
           ) : null}
         </div>
-        <button className="button button-primary" type="button" onClick={handleSearch} disabled={loading || manualOpen}>
-          {loading ? result ? "Verificando fotos…" : "Buscando…" : "Buscar"}
+        <button className="button button-primary" type="button" onClick={hasCommittedSelection ? unlockSearch : handleSearch} disabled={loading || manualOpen}>
+          {hasCommittedSelection ? "Alterar busca" : loading ? result ? "Verificando fotos…" : "Buscando…" : "Buscar"}
         </button>
       </div>
 
       <p className="search-summary" id="product-search-help">
-        Nome e marca pesquisam somente produtos já validados. Produto novo entra por EAN/GTIN exato ou cadastro manual.
+        {hasCommittedSelection
+          ? "Produto escolhido. Use Alterar busca para pesquisar outro; a oferta atual será mantida até você escolher um novo produto."
+          : selectedCode && searchUnlocked
+            ? "A oferta atual permanece até você escolher outro produto. Nome e marca pesquisam somente produtos já validados."
+            : "Nome e marca pesquisam somente produtos já validados. Produto novo entra por EAN/GTIN exato ou cadastro manual."}
       </p>
       <ul className="search-status-legend" aria-label="Estados futuros dos produtos">
         <li>

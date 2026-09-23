@@ -58,8 +58,7 @@ describe("product search UI", () => {
         }],
       })
       const onSelect = vi.fn()
-      const onClearSelection = vi.fn()
-      render(<ProductSearch onSelect={onSelect} onClearSelection={onClearSelection} />)
+      render(<ProductSearch onSelect={onSelect} />)
       const input = screen.getByLabelText("Pesquisar produto por nome ou GTIN/EAN")
       fireEvent.change(input, { target: { value: "n" } })
       await act(async () => { vi.advanceTimersByTime(300); await Promise.resolve() })
@@ -82,14 +81,18 @@ describe("product search UI", () => {
       expect(input).toHaveAttribute("aria-expanded", "true")
       fireEvent.keyDown(input, { key: "Enter" })
       expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ code: "7891000053508" }))
-      expect(input).toHaveValue("Nescau 2.0")
+      expect(input).toHaveValue("7891000053508")
+      expect(input).toHaveAttribute("readonly")
+      expect(screen.getByRole("button", { name: "Alterar busca" })).toBeEnabled()
       expect(input).toHaveAttribute("aria-expanded", "false")
       await act(async () => { vi.advanceTimersByTime(300); await Promise.resolve() })
       expect(search).toHaveBeenCalledTimes(1)
       expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
-      fireEvent.change(input, { target: { value: "" } })
-      expect(onClearSelection).toHaveBeenCalledTimes(1)
+      fireEvent.click(screen.getByRole("button", { name: "Alterar busca" }))
       expect(screen.getByRole("button", { name: "Abrir cadastro manual" })).toBeEnabled()
+      expect(screen.getByRole("button", { name: "Buscar" })).toBeEnabled()
+      expect(input).not.toHaveAttribute("readonly")
+      expect(input).toHaveValue("")
     } finally {
       vi.useRealTimers()
     }
@@ -108,21 +111,21 @@ describe("product search UI", () => {
     }
   })
 
-  it("mantém o campo coerente com uma seleção existente e a desfaz ao apagar", () => {
-    const onClearSelection = vi.fn()
+  it("mostra o EAN de uma seleção existente e só libera nova busca por ação explícita", () => {
     render(
       <ProductSearch
         selectedCode="7891000053508"
         selectedLabel="Nestlé Nescau 2.0"
         onSelect={vi.fn()}
-        onClearSelection={onClearSelection}
       />,
     )
     const input = screen.getByLabelText("Pesquisar produto por nome ou GTIN/EAN")
-    expect(input).toHaveValue("Nestlé Nescau 2.0")
-    fireEvent.change(input, { target: { value: "" } })
-    expect(onClearSelection).toHaveBeenCalledTimes(1)
+    expect(input).toHaveValue("7891000053508")
+    expect(input).toHaveAttribute("readonly")
+    fireEvent.click(screen.getByRole("button", { name: "Alterar busca" }))
     expect(input).toHaveValue("")
+    expect(input).not.toHaveAttribute("readonly")
+    expect(screen.getByText(/A oferta atual permanece até você escolher outro produto/)).toBeVisible()
   })
 
   it("limpa a pesquisa e devolve o foco ao receber uma nova oferta", async () => {
@@ -194,6 +197,7 @@ describe("product search UI", () => {
     await user.click(await screen.findByRole("option", { name: /Nescau/ }))
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ origem: "openfoodfacts", imageUrl: expect.stringContaining("full.jpg") }))
     expect(screen.getByLabelText("Pesquisar produto por nome ou GTIN/EAN")).toHaveValue("Nescau")
+    expect(screen.getByLabelText("Pesquisar produto por nome ou GTIN/EAN")).toHaveAttribute("readonly")
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
   })
 
