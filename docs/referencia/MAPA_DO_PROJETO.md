@@ -32,6 +32,7 @@ As regras de produto vivem em [`DECISOES.md`](DECISOES.md).
 | `server/kieBackgroundRemoval.ts` | upload Base64 manual, criação/consulta de tarefa e relay local seguro do PNG da Kie. `createKieBackgroundRemovalHandler` separa o handler do plugin Vite, como em `catalogApi.ts`, para que a rota possa ser exercitada por um servidor HTTP real em teste |
 | `public/templates/story/single/` | fundo fixo da arte; `story-base-empty.png` é o fundo usado pela composição |
 | `public/fonts/` | fontes da interface e do SVG, incluindo Komika Axis da placa |
+| `public/favicon.svg` | ícone da aba do navegador |
 | `assets/reference-templates/` | PSD e referências de design; não é usado diretamente pelo navegador |
 | `data/` | contador local do Cosmos usado somente como recuperação se a reserva remota falhar; não é versionado nem deve ser editado ou apagado manualmente |
 | `docs/superpowers/specs/` | especificação canônica do produto |
